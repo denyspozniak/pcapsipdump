@@ -52,6 +52,7 @@ calltable::calltable()
     table.clear();
     erase_non_t38 = 0;
     opt_absolute_timeout = INT32_MAX;
+    global_last_packet_time = 0;
 }
 
 int calltable::add(
@@ -214,7 +215,7 @@ int calltable::do_cleanup( time_t currtime ){
                     (currtime - table[idx].last_packet_time > 300) ||
                     (currtime - table[idx].first_packet_time > opt_absolute_timeout))){
 	    if (table[idx].f_pcap != NULL){
-		printf("[%ld] calltable: cleaning up[%s] packets[%ld]\n", currtime, table[idx].call_id, table[idx].packets);
+		printf("[%ld] calltable: cleaning up[%s] packets[%lu]\n", currtime, table[idx].call_id, table[idx].packets);
 		pcap_dump_flush(table[idx].f_pcap);
 		pcap_dump_close(table[idx].f_pcap);
                 if (erase_non_t38 && !table[idx].had_t38) {

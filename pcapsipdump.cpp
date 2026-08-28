@@ -619,7 +619,9 @@ int main(int argc, char *argv[])
                     }
 		    s=gettag(data,datalen,"Call-ID:",&l) ? :
 		      gettag(data,datalen,"i:",&l);
-                    memcpy(callid, s, l);
+                    if (s != NULL) {
+                        memcpy(callid, s, l);
+                    }
                     callid[l] = '\0';
                     number_filter_matched=false;
                     if (!number_filter_in_use ||
@@ -667,7 +669,7 @@ int main(int argc, char *argv[])
                     if(idx>=0){
                         char *sdp = NULL;
                         if (strcmp(sip_method,"BYE")==0){
-				printf("[%ld] SIP[%s][%s] packets[%ld] file[%p|%s]\n", pkt_header->ts.tv_sec, callid, sip_method, ct->table[idx].packets
+				printf("[%ld] SIP[%s][%s] packets[%lu] file[%p|%s]\n", pkt_header->ts.tv_sec, callid, sip_method, ct->table[idx].packets
 				     , ct->table[idx].f_pcap, ct->table[idx].fn_pcap);
                             ct->table[idx].had_bye=1;
                         }
@@ -819,7 +821,7 @@ long long parse_size_string(char *s){
     }
     result=0;
     multiplier[0]=0;
-    sscanf (s,"%lld%s",&result,multiplier);
+    sscanf (s,"%lld%31s",&result,multiplier);
     for (i = 0; multipliers[i].value>0; i++){
         if (strcasecmp(multipliers[i].text,multiplier)==0){
             result*=multipliers[i].value;
