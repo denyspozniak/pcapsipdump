@@ -1,0 +1,193 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build, without the leading v (e.g. 1.2.0)'
+        required: true
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: v
+        name: Derive the version and check it against the source
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = workflow_dispatch ]; then
+            version="${{ inputs.version }}"
+          else
+            version="${GITHUB_REF_NAME#v}"
+          fi
+          source_version=$(sed -n 's/.*PCAPSIPDUMP_VERSION "\(.*\)".*/\1/p' pcapsipdump.h)
+          if [ "${version}" != "${source_version}" ]; then
+            echo "::error::tag says ${version} but pcapsipdump.h says ${source_version}." \
+                 "Use 'bumpversion patch|minor|major' instead of tagging by hand."
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+  deb:
+    name: deb (${{ matrix.dist }})
+    needs: version
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: debian:12
+            dist: debian12
+          - image: debian:trixie
+            dist: debian13
+          - image: ubuntu:22.04
+            dist: ubuntu2204
+          - image: ubuntu:24.04
+            dist: ubuntu2404
+    steps:
+      - name: Install build dependencies
+        run: |
+          set -eux
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential debhelper devscripts fakeroot lintian \
+            libpcap-dev ca-certificates git
+
+      - uses: actions/checkout@v4
+
+      - name: Stamp the changelog with a distribution-specific version
+        shell: bash
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          DIST: ${{ matrix.dist }}
+          DEBEMAIL: denys.pozniak@gmail.com
+          DEBFULLNAME: Denys Pozniak
+        run: |
+          set -euo pipefail
+          # "~" sorts before everything, so 1.2.0~ubuntu2404 < 1.2.0: a distro
+          # build never shadows a plain 1.2.0 in an apt repository.
+          dch --newversion "${VERSION}~${DIST}" --distribution unstable \
+              --force-bad-version "Automated build of ${VERSION} for ${DIST}."
+          head -5 debian/changelog
+
+      - name: Build the package
+        run: dpkg-buildpackage -us -uc -b
+
+      - name: Inspect and install-test the result
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p out
+          mv ../*.deb out/
+          for f in out/*.deb; do
+            echo "=== ${f}"
+            dpkg-deb --info "${f}"
+            dpkg-deb --contents "${f}"
+          done
+          # lintian is advisory: upstream ships no man page and we do not want a
+          # cosmetic tag to block a release.
+          lintian --no-tag-display-limit out/*.deb || true
+          apt-get install -y ./out/pcapsipdump_*.deb
+          test -x /usr/sbin/pcapsipdump
+          apt-get remove -y pcapsipdump
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deb-${{ matrix.dist }}
+          path: out/*.deb
+          if-no-files-found: error
+
+  tarball:
+    name: source tarball
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create the release tarball
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -euxo pipefail
+          mkdir -p out
+          git archive --format=tar.gz \
+            --prefix="pcapsipdump-${VERSION}/" \
+            -o "out/pcapsipdump-${VERSION}.tar.gz" HEAD
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: source-tarball
+          path: out/*.tar.gz
+          if-no-files-found: error
+
+  publish:
+    name: publish release
+    needs: [version, deb, tarball]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Collect and checksum the artifacts
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p dist
+          find artifacts -type f \( -name '*.deb' -o -name '*.tar.gz' \) \
+            -exec mv {} dist/ \;
+          cd dist
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.version.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          notes=$(mktemp)
+          {
+            echo "## pcapsipdump ${VERSION}"
+            echo
+            echo "Packages built by GitHub Actions from this tag."
+            echo "Verify with \`sha256sum -c SHA256SUMS\`."
+            echo
+            echo "| File | Target |"
+            echo "| --- | --- |"
+            echo "| \`*~debian12_*.deb\`   | Debian 12 (bookworm) |"
+            echo "| \`*~debian13_*.deb\`   | Debian 13 (trixie) |"
+            echo "| \`*~ubuntu2204_*.deb\` | Ubuntu 22.04 LTS |"
+            echo "| \`*~ubuntu2404_*.deb\` | Ubuntu 24.04 LTS |"
+            echo "| \`*.tar.gz\`           | source |"
+            echo
+            echo "Full changes: [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md)"
+          } > "${notes}"
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "pcapsipdump ${VERSION}" \
+            --notes-file "${notes}" \
+            --verify-tag \
+            dist/*

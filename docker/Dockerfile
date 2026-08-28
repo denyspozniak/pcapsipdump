@@ -1,12 +1,31 @@
-FROM python:3.9.18-bullseye
+# Build from the repository root:
+#   docker build -f docker/Dockerfile -t pcapsipdump .
+FROM debian:12-slim AS build
 
-RUN echo "installing dependencies" \
-	&& apt-get update && apt-get install -y build-essential libpcap-dev vim curl wget subversion zip
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      build-essential libpcap-dev libbsd-dev \
+ && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /opt/
+WORKDIR /src
+COPY . .
+RUN make clean && make
 
-RUN git clone https://github.com/jchavanton/pcapsipdump.git
-RUN cd pcapsipdump && make && make install
 
-COPY entry.sh /
-ENTRYPOINT ["/entry.sh"]
+FROM debian:12-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends libpcap0.8 libbsd0 \
+ && rm -rf /var/lib/apt/lists/* \
+ && mkdir -p /var/spool/pcapsipdump
+
+COPY --from=build /src/pcapsipdump /usr/sbin/pcapsipdump
+
+VOLUME ["/var/spool/pcapsipdump"]
+
+# Capturing live traffic needs --net=host --cap-add=NET_RAW --cap-add=NET_ADMIN.
+# Splitting an existing file (-r) needs no privileges at all.
+ENTRYPOINT ["/usr/sbin/pcapsipdump"]
+CMD ["-h"]

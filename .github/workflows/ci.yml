@@ -1,0 +1,153 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.image }} (${{ matrix.cc }})
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: debian:12
+            cc: g++
+          - image: debian:12
+            cc: clang++
+          - image: debian:trixie
+            cc: g++
+          - image: ubuntu:22.04
+            cc: g++
+          - image: ubuntu:24.04
+            cc: g++
+          - image: ubuntu:24.04
+            cc: clang++
+    steps:
+      - name: Install build dependencies
+        run: |
+          set -eux
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential clang libpcap-dev libbsd-dev python3 \
+            ca-certificates git make
+
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: make CXX=${{ matrix.cc }}
+
+      - name: Unit tests
+        run: make -C tests/unit CXX=${{ matrix.cc }}
+
+      - name: Smoke test - split a synthetic bulk capture into per-call files
+        run: make -C tests/smoke
+
+      - name: Benchmark builds and runs
+        run: make -C tests/performance CXX=${{ matrix.cc }}
+
+  install-check:
+    name: staged install layout
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential libpcap-dev
+
+      - name: Build and install into a staging root
+        run: |
+          make
+          make install DESTDIR="${PWD}/stage" PREFIX=/usr
+
+      - name: Assert the resulting file list
+        shell: bash
+        run: |
+          set -euo pipefail
+          find stage \( -type f -o -type d \) | sort
+          test -x stage/usr/sbin/pcapsipdump
+          test -f stage/usr/lib/systemd/system/pcapsipdump.service
+          test -f stage/usr/lib/systemd/system/pcapsipdump-cleanup.service
+          test -f stage/usr/lib/systemd/system/pcapsipdump-cleanup.timer
+          test -f stage/etc/default/pcapsipdump
+          test -d stage/var/spool/pcapsipdump
+          test -f stage/usr/share/man/man8/pcapsipdump.8
+
+      - name: Validate the systemd units
+        shell: bash
+        run: |
+          set -euo pipefail
+          # ExecStart points at /usr/sbin/pcapsipdump, which does not exist on
+          # the runner, so only the unit syntax is checked here.
+          systemd-analyze verify --recursive-errors=no \
+            stage/usr/lib/systemd/system/pcapsipdump-cleanup.timer 2>&1 | tee verify.log
+          ! grep -qi 'invalid\|unknown key\|failed to parse' verify.log
+
+  packaging:
+    name: build .deb (${{ matrix.dist }})
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: debian:12
+            dist: debian12
+          - image: debian:trixie
+            dist: debian13
+          - image: ubuntu:22.04
+            dist: ubuntu2204
+          - image: ubuntu:24.04
+            dist: ubuntu2404
+    steps:
+      - name: Install build dependencies
+        run: |
+          set -eux
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential debhelper devscripts fakeroot lintian \
+            libpcap-dev ca-certificates git
+
+      - uses: actions/checkout@v4
+
+      - name: Build the package
+        run: dpkg-buildpackage -us -uc -b
+
+      - name: Inspect the package
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in ../*.deb; do
+            echo "=== ${f}"
+            dpkg-deb --info "${f}"
+            dpkg-deb --contents "${f}"
+          done
+          # dpkg-buildpackage also emits a -dbgsym package; lint both.
+          lintian --no-tag-display-limit ../*.deb || true
+
+      - name: Install it and check the unit files land where they should
+        shell: bash
+        run: |
+          set -euxo pipefail
+          apt-get install -y ../pcapsipdump_*.deb
+          test -x /usr/sbin/pcapsipdump
+          test -f /etc/default/pcapsipdump
+          test -f /usr/lib/systemd/system/pcapsipdump.service
+          test -f /usr/lib/systemd/system/pcapsipdump-cleanup.timer
+          test -f /usr/share/man/man8/pcapsipdump.8.gz
+          apt-get remove -y pcapsipdump
