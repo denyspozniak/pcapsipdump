@@ -139,6 +139,11 @@ jobs:
           done
           # dpkg-buildpackage also emits a -dbgsym package; lint both.
           lintian --no-tag-display-limit ../*.deb || true
+          # Assert on the package contents rather than on the installed tree:
+          # the Ubuntu container images carry a dpkg path-exclude for
+          # /usr/share/man, so the page is in the .deb but never unpacked.
+          dpkg-deb --contents ../pcapsipdump_*.deb \
+            | grep -q './usr/share/man/man8/pcapsipdump.8.gz'
 
       - name: Install it and check the unit files land where they should
         shell: bash
@@ -149,5 +154,4 @@ jobs:
           test -f /etc/default/pcapsipdump
           test -f /usr/lib/systemd/system/pcapsipdump.service
           test -f /usr/lib/systemd/system/pcapsipdump-cleanup.timer
-          test -f /usr/share/man/man8/pcapsipdump.8.gz
           apt-get remove -y pcapsipdump
