@@ -1,3 +1,17 @@
+pcapsipdump (1.2.0) unstable; urgency=medium
+
+  * Repackage against upstream SVN r157 (the final SourceForge revision) with
+    the pcap_dump_flush()/logging fixes from the jchavanton fork.
+  * Replace the SysV init script with systemd units; the old scripts are kept
+    in contrib/sysvinit for reference.
+  * Add pcapsipdump-cleanup.timer, which finally makes the long-documented
+    RETENTION setting do something.
+  * Modernise packaging: debhelper-compat 13, dh sequencer instead of cdbs,
+    hardening=+all.
+  * Build .deb and .rpm packages from GitHub Actions.
+
+ -- Denys Pozniak <denys.pozniak@gmail.com>  Fri, 28 Aug 2026 16:00:00 +0200
+
 pcapsipdump (0.2-1) UNRELEASED; urgency=low
 
   * Updates package to latest SVN 0.2 from source forge
@@ -6,7 +20,6 @@ pcapsipdump (0.2-1) UNRELEASED; urgency=low
 
 pcapsipdump (0.1.4-1) UNRELEASED; urgency=low
 
-  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+  * Initial release
 
  -- Bjoern Boschman <bjoern@boschman.de>  Tue, 30 Sep 2008 14:17:57 +0200
-

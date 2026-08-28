@@ -1,0 +1,13 @@
+[Unit]
+Description=Delete pcapsipdump captures older than RETENTION days
+Documentation=https://github.com/denyspozniak/pcapsipdump
+
+[Service]
+Type=oneshot
+Environment=SPOOLDIR=/var/spool/pcapsipdump
+Environment=RETENTION=4
+EnvironmentFile=-/etc/default/pcapsipdump
+EnvironmentFile=-/etc/sysconfig/pcapsipdump
+ExecStart=/bin/sh -c 'test -d "$SPOOLDIR" || exit 0; \
+    find "$SPOOLDIR" -type f -name "*.pcap" -mtime +"$RETENTION" -delete; \
+    find "$SPOOLDIR" -mindepth 1 -type d -empty -delete'

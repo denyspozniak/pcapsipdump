@@ -1,15 +1,27 @@
-# Config file for pcapsipdump
+# Configuration for pcapsipdump (installed as /etc/default/pcapsipdump)
+#
+# Consumed by the systemd units:
+#   pcapsipdump.service          - the capture daemon
+#   pcapsipdump-cleanup.timer    - daily removal of captures older than RETENTION
 
-# start pcapsidump in daemon mode from init.d script?
-#  only allowed values are "true" or "false"
-#  Anything else will be handled as "false"
-PCAPSIDUMP_ENABLE=false
+# Interface to capture on. "any" captures on all interfaces.
+DEVICE=any
 
-# The Ethernet NIC that we want to listen to
-DEVICE=eth0
-
-# Place to write captired files
+# Where the per-call .pcap files are written.
+# Accepts a strftime()-style template, see "pcapsipdump -h" and the -d option, e.g.
+#   SPOOLDIR=/var/spool/pcapsipdump/%Y%m%d/%H/%Y%m%d-%H%M%S-%f-%t-%i.pcap
 SPOOLDIR=/var/spool/pcapsipdump
 
-# The number of days to retain data files for
+# Days to keep captures before pcapsipdump-cleanup.timer deletes them.
 RETENTION=4
+
+# Extra command-line options passed verbatim to pcapsipdump. Examples:
+#   -v 1                       increase verbosity
+#   -U                         packet-buffered writes (readable while still open)
+#   -B 64MiB                   larger kernel capture buffer, avoids drops
+#   -R rtp+rtcp                what to record besides SIP (rtp, rtpevent, t38, none)
+#   -m '^(INVITE|REGISTER)$'   which SIP methods open a new capture file
+#   -n '^\+49.*$'              only record calls to/from matching numbers
+#   -T 7200                    force-close calls still active after N seconds
+# Run "pcapsipdump -h" for the full list.
+OTHER_OPTS=

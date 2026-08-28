@@ -1,15 +1,28 @@
 Source: pcapsipdump
-Section: unknown
-Priority: extra
-Maintainer: Debian VoIP Team <pkg-voip-maintainers@lists.alioth.debian.org>
-Uploaders: Bjoern Boschman <bjoern@boschman.de>
-Build-Depends: cdbs, cdbs, debhelper (>= 5), libpcap0.8-dev
-Standards-Version: 3.8.0
+Section: net
+Priority: optional
+Maintainer: Denys Pozniak <denys.pozniak@gmail.com>
+Build-Depends: debhelper-compat (= 13),
+               libpcap-dev,
+               pkg-config
+Standards-Version: 4.6.2
+Homepage: https://github.com/denyspozniak/pcapsipdump
+Rules-Requires-Root: no
 
 Package: pcapsipdump
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libpcap0.8
-Description: pcapsipdump is a tool for dumping SIP sessions
- pcapsipdump is a tool for dumping SIP sessions (+RTP traffic, if available) to disk 
- in a fashion similar to "tcpdump -w" (format is exactly the same), 
- but one file per sip session (even if there is thousands of concurrect SIP sessions).
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: dump SIP sessions to one pcap file per call
+ pcapsipdump is a libpcap-based sniffer that writes SIP signalling and the
+ associated RTP/RTCP media to disk in the same format as "tcpdump -w", but
+ splits the output into one .pcap file per SIP session - even with thousands
+ of concurrent calls.
+ .
+ File names are built from a strftime()-style template that can embed the
+ caller, the callee and the Call-ID, so a single call can be located without
+ grepping through a bulk capture. Calls can be filtered by SIP method, by
+ number (regular expression) or by a pcap-filter(7) expression, and open/close
+ triggers can move finished files or hand them to an external command.
+ .
+ The same binary also splits an existing bulk capture offline:
+ "pcapsipdump -r bulk.pcap -d /tmp/calls".

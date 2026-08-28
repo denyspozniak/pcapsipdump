@@ -1,0 +1,238 @@
+.TH PCAPSIPDUMP 8 "2026-08-28" "pcapsipdump 1.2.0" "System Administration"
+.SH NAME
+pcapsipdump \- dump SIP sessions to one pcap file per call
+.SH SYNOPSIS
+.B pcapsipdump
+.RB [ \-fpUhV ]
+.RB [ \-i
+.IR interface " |"
+.B \-r
+.IR file ]
+.RB [ \-d
+.IR template ]
+.RB [ \-P
+.IR pid_file ]
+.RB [ \-v
+.IR level ]
+.RB [ \-R
+.IR filter ]
+.RB [ \-m
+.IR regex ]
+.RB [ \-n
+.IR regex ]
+.RB [ \-l
+.IR N ]
+.RB [ \-B
+.IR size ]
+.RB [ \-T
+.IR seconds ]
+.RB [ \-t
+.IR trigger : action : parameter ]
+.RI [ expression ]
+.SH DESCRIPTION
+.B pcapsipdump
+is a libpcap-based sniffer that records SIP signalling together with the
+RTP/RTCP media belonging to it, in the same file format
+.BR "tcpdump \-w"
+produces. Instead of one large capture it writes a separate file for each SIP
+session, even when thousands of calls are in progress at once.
+.PP
+The same binary also splits an existing bulk capture offline, which needs no
+privileges:
+.PP
+.RS
+.B pcapsipdump \-r bulk.pcap \-d /tmp/calls
+.RE
+.SH OPTIONS
+.TP
+.B \-h
+Show a usage summary and exit.
+.TP
+.B \-V
+Show the version and exit.
+.TP
+.BI \-i " interface"
+Capture from the named interface.
+.B any
+captures from all of them.
+.TP
+.BI \-r " file"
+Read from a
+.B .pcap
+file instead of an interface.
+.TP
+.BI \-d " template"
+Output directory, or a file name template. See
+.B FILE NAME TEMPLATES
+below.
+.TP
+.B \-f
+Stay in the foreground instead of forking and detaching from the controlling
+terminal. This is what the shipped systemd unit uses.
+.TP
+.BI \-P " pid_file"
+When forking, write the PID here. Defaults to
+.IR /var/run/pcapsipdump.pid .
+.TP
+.B \-p
+Do
+.I not
+put the interface into promiscuous mode.
+.TP
+.B \-U
+Write packet-buffered. Slower, but a file that is still being written is always
+consistent and can be opened at any time.
+.TP
+.BI \-v " level"
+Verbosity; higher is noisier. Level 1 and above also print the libpcap version
+and the effective options at start-up.
+.TP
+.BI \-B " size"
+Kernel capture buffer size, expressed in bytes or with a quantifier:
+.BR KB ", " KiB ", " MB ", " MiB ", " GB ", " GiB .
+For example
+.BR "\-B 64MiB" .
+Raise this to a few MiB or more to stop the kernel dropping packets under load.
+.TP
+.BI \-R " filter"
+What to record alongside the signalling:
+.B rtp+rtcp
+(the default),
+.BR rtp ,
+.BR rtpevent ,
+.BR t38 ,
+or
+.BR none .
+.TP
+.BI \-m " regex"
+Which SIP methods open a new capture file. Defaults to
+.BR ^(INVITE|OPTIONS|REGISTER)$ .
+.TP
+.BI \-n " regex"
+Record only calls to or from a number matching this extended regular
+expression. See
+.BR regex (7).
+.TP
+.BI \-l " N"
+Sample the traffic: record only every
+.IR N -th
+call.
+.TP
+.BI \-T " seconds"
+Stop recording a call unconditionally once it has been active this long. Useful
+against peers that keep sending RTP long after the call ended.
+.TP
+.BI \-t " trigger" : action : parameter
+Run something when a capture file is opened or closed. See
+.B TRIGGERS
+below.
+.TP
+.I expression
+Any trailing arguments form a
+.BR pcap-filter (7)
+expression. It applies to signalling
+.I and
+media, so use it with care.
+.SH FILE NAME TEMPLATES
+The argument to
+.B \-d
+is passed through
+.BR strftime (3),
+using the call's start time, and then through three additional expansions:
+.TP
+.B %f
+caller (the From user)
+.TP
+.B %t
+callee (the To user)
+.TP
+.B %i
+Call-ID
+.PP
+For example:
+.PP
+.RS
+.nf
+pcapsipdump \-i eth0 \\
+  \-d '/var/spool/pcapsipdump/%Y%m%d/%H/%Y%m%d\-%H%M%S\-%f\-%t\-%i.pcap'
+.fi
+.RE
+.SH TRIGGERS
+.BI \-t " when" : action : parameter
+hooks into the capture lifecycle.
+.I when
+is
+.B open
+or
+.BR close ;
+.I parameter
+goes through the same expansion as
+.BR \-d .
+.TP
+.BI mv: directory
+Move the finished file elsewhere, using
+.BR /bin/mv .
+.TP
+.BI exec:\(dq /bin/prog\ args \(dq
+Fork and execute a program.
+.TP
+.BI sh:\(dq "shell code" \(dq
+Fork and run
+.B /bin/sh \-c
+on the given code.
+.SH FILES
+.TP
+.I /etc/default/pcapsipdump
+Configuration read by the systemd units on Debian and Ubuntu.
+.TP
+.I /etc/sysconfig/pcapsipdump
+The same, on RHEL-like distributions.
+.TP
+.I /var/spool/pcapsipdump
+Default capture directory.
+.TP
+.I /usr/lib/systemd/system/pcapsipdump.service
+The capture daemon. Not enabled on install; configure
+.B DEVICE
+first.
+.TP
+.I /usr/lib/systemd/system/pcapsipdump-cleanup.timer
+Deletes captures older than
+.B RETENTION
+days, once a day.
+.SH EXIT STATUS
+Returns 0 on success or after
+.BR \-h / \-V ,
+and non-zero when the arguments are invalid or the capture cannot be started.
+.SH EXAMPLES
+Split a capture somebody handed you:
+.PP
+.RS
+.B pcapsipdump \-r bulk.pcap \-d /tmp/calls
+.RE
+.PP
+Record only calls involving a German number, with RTP but not RTCP:
+.PP
+.RS
+.B pcapsipdump \-i eth0 \-d /var/spool/pcapsipdump \-R rtp \-n '^\e+49'
+.RE
+.PP
+Hand every finished call to a post-processing script:
+.PP
+.RS
+.B pcapsipdump \-i eth0 \-d /var/spool/pcapsipdump \-t 'close:exec:/usr/local/bin/archive\-call.sh %i'
+.RE
+.SH SEE ALSO
+.BR tcpdump (8),
+.BR pcap-filter (7),
+.BR regex (7),
+.BR strftime (3)
+.PP
+.UR https://github.com/denyspozniak/pcapsipdump
+.UE
+.SH AUTHORS
+Originally written by the pcapsipdump team on SourceForge
+.RB ( aexaey ", " andy0x ", " nording ).
+This fork is maintained at
+.UR https://github.com/denyspozniak/pcapsipdump
+.UE .

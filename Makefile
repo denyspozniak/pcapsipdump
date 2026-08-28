@@ -2,6 +2,13 @@ LIBS ?= -lpcap -lstdc++
 RELEASEFLAGS ?= -O3 -Wall
 #CXXFLAGS ?= --std=c++0x
 
+PREFIX ?= /usr
+SBINDIR ?= $(PREFIX)/sbin
+SYSCONFDIR ?= /etc
+SPOOLDIR ?= /var/spool/pcapsipdump
+SYSTEMDUNITDIR ?= $(PREFIX)/lib/systemd/system
+MANDIR ?= $(PREFIX)/share/man
+
 # auto-detect if bsd/strings.h is available
 ifeq ($(shell $(CXX) $(CXXFLAGS) $(LDFLAGS) $(DEFS) -E -o /dev/null \
     	make-checks/libbsd.cpp 2>/dev/null; echo $$?),0)
@@ -36,20 +43,33 @@ pcapsipdump-debug: make-checks *.cpp *.h
 clean: make-checks/clean
 	rm -f pcapsipdump pcapsipdump-debug gmon.out
 
-install: pcapsipdump $(EXTRA_INSTALL)
-	install pcapsipdump ${DESTDIR}/usr/sbin/pcapsipdump
-	mkdir -p ${DESTDIR}/var/spool/pcapsipdump
-	chmod 0700 ${DESTDIR}/var/spool/pcapsipdump
+install: pcapsipdump install-systemd install-man $(EXTRA_INSTALL)
+	install -d ${DESTDIR}${SBINDIR}
+	install -m 0755 pcapsipdump ${DESTDIR}${SBINDIR}/pcapsipdump
+	install -d -m 0700 ${DESTDIR}${SPOOLDIR}
+
+install-man:
+	install -d ${DESTDIR}${MANDIR}/man8
+	install -m 0644 man/pcapsipdump.8 ${DESTDIR}${MANDIR}/man8/pcapsipdump.8
+
+install-systemd:
+	install -d ${DESTDIR}${SYSTEMDUNITDIR}
+	install -m 0644 systemd/pcapsipdump.service \
+		systemd/pcapsipdump-cleanup.service \
+		systemd/pcapsipdump-cleanup.timer \
+		${DESTDIR}${SYSTEMDUNITDIR}/
 
 install-redhat:
-	install redhat/pcapsipdump.init ${DESTDIR}/etc/rc.d/init.d/pcapsipdump
-	install redhat/pcapsipdump.sysconfig ${DESTDIR}/etc/sysconfig/pcapsipdump
+	install -d ${DESTDIR}${SYSCONFDIR}/sysconfig
+	install -m 0644 redhat/pcapsipdump.sysconfig \
+		${DESTDIR}${SYSCONFDIR}/sysconfig/pcapsipdump
 
 install-debian:
-	install debian/pcapsipdump.init ${DESTDIR}/etc/init.d/pcapsipdump
-	install debian/pcapsipdump.default ${DESTDIR}/etc/default/pcapsipdump
+	install -d ${DESTDIR}${SYSCONFDIR}/default
+	install -m 0644 debian/pcapsipdump.default \
+		${DESTDIR}${SYSCONFDIR}/default/pcapsipdump
 
-.PHONY: tests
+.PHONY: all clean install install-systemd install-man install-redhat install-debian tests
 
 tests:
-	make -C tests
+	$(MAKE) -C tests

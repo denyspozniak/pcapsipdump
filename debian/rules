@@ -1,11 +1,16 @@
 #!/usr/bin/make -f
-  
-include /usr/share/cdbs/1/rules/debhelper.mk
-include /usr/share/cdbs/1/class/makefile.mk
 
-# Add here any variable or target overrides you need.
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
-get-orig-source:
-	@@dh_testdir
-	@@[ -L ../tarballs ]||ln -s ../tarballs ../tarballs
-	@@uscan --force-download --destdir ../tarballs
+%:
+	dh $@
+
+override_dh_auto_install:
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/pcapsipdump PREFIX=/usr
+
+# The capture daemon needs DEVICE/OTHER_OPTS set in /etc/default/pcapsipdump
+# before it does anything useful, so it is installed disabled. The cleanup
+# timer is safe to enable straight away.
+override_dh_installsystemd:
+	dh_installsystemd --no-enable --no-start --name=pcapsipdump
+	dh_installsystemd --name=pcapsipdump-cleanup

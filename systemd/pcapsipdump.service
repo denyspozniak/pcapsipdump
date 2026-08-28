@@ -1,0 +1,43 @@
+[Unit]
+Description=pcapsipdump - per-call SIP/RTP capture daemon
+Documentation=https://github.com/denyspozniak/pcapsipdump
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+# Debian/Ubuntu ship /etc/default/pcapsipdump, RHEL-likes /etc/sysconfig/pcapsipdump.
+# Both are optional ("-" prefix); the Environment= lines below are the fallback.
+Environment=DEVICE=any
+Environment=SPOOLDIR=/var/spool/pcapsipdump
+EnvironmentFile=-/etc/default/pcapsipdump
+EnvironmentFile=-/etc/sysconfig/pcapsipdump
+
+# -f keeps pcapsipdump in the foreground, which is what Type=simple expects.
+ExecStart=/usr/sbin/pcapsipdump -f -i ${DEVICE} -d ${SPOOLDIR} $OTHER_OPTS
+
+Restart=on-failure
+RestartSec=5s
+
+# Packet capture needs CAP_NET_RAW; CAP_NET_ADMIN is required to put the
+# interface into promiscuous mode. Everything else is dropped.
+AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN
+CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN
+NoNewPrivileges=yes
+ProtectSystem=full
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_PACKET
+RestrictNamespaces=yes
+RestrictRealtime=yes
+LockPersonality=yes
+MemoryDenyWriteExecution=yes
+SystemCallFilter=@system-service
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

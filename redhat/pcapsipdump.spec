@@ -1,36 +1,64 @@
-Summary: PCAP SIP Dump tool
-Name: pcapsipdump
-Distribution: RedHat
-Version: 0.2
-Release: 2
-License: GPL v2
-Group: Utilities/System
-Vendor: pcapsipdump.sf.net
-BuildRoot: /var/tmp/%{name}-%{version}
-Source: %{name}-%{version}.tar.gz
+Name:           pcapsipdump
+Version:        1.2.0
+Release:        1%{?dist}
+Summary:        Dump SIP sessions to one pcap file per call
+
+License:        GPL-2.0-or-later
+URL:            https://github.com/denyspozniak/pcapsipdump
+Source0:        %{name}-%{version}.tar.gz
+
+BuildRequires:  gcc-c++
+BuildRequires:  make
+BuildRequires:  libpcap-devel
+BuildRequires:  systemd-rpm-macros
 
 %description
-pcapsipdump is a tool for dumping SIP sessions (+RTP
-traffic, if available) to disk in a fashion similar
-to "tcpdump -w" (format is exactly the same), but one
-file per sip session (even if there is thousands of
-concurrent SIP sessions).
+pcapsipdump is a libpcap-based sniffer that writes SIP signalling and the
+associated RTP/RTCP media to disk in the same format as "tcpdump -w", but
+splits the output into one .pcap file per SIP session - even with thousands
+of concurrent calls.
+
+File names are built from a strftime()-style template that can embed the
+caller, the callee and the Call-ID, so a single call can be located without
+grepping through a bulk capture. Calls can be filtered by SIP method, by
+number (regular expression) or by a pcap-filter(7) expression, and open/close
+triggers can move finished files or hand them to an external command.
+
+The same binary also splits an existing bulk capture offline:
+"pcapsipdump -r bulk.pcap -d /tmp/calls".
 
 %prep
-%setup
+%autosetup
 
 %build
-make
+%make_build RELEASEFLAGS="%{optflags}" LDFLAGS="%{build_ldflags}"
 
 %install
-mkdir -p $RPM_BUILD_ROOT/usr/sbin $RPM_BUILD_ROOT/etc/sysconfig $RPM_BUILD_ROOT/etc/rc.d/init.d $RPM_BUILD_ROOT/var/spool
-make DESTDIR=$RPM_BUILD_ROOT install
+%make_install PREFIX=%{_prefix} SYSTEMDUNITDIR=%{_unitdir} MANDIR=%{_mandir}
 
 %post
-chkconfig pcapsipdump --add
+%systemd_post %{name}.service %{name}-cleanup.timer
+
+%preun
+%systemd_preun %{name}.service %{name}-cleanup.timer
+
+%postun
+%systemd_postun_with_restart %{name}.service
 
 %files
-%config(noreplace) %attr(0755,root,root) /etc/sysconfig/pcapsipdump
-%attr(0700,root,root) %dir    /var/spool/pcapsipdump
-%attr(0755,root,root)       /etc/rc.d/init.d/pcapsipdump
-%attr(0755,root,root)      /usr/sbin/pcapsipdump
+%license LICENSE
+%doc README.md ChangeLog
+%config(noreplace) %{_sysconfdir}/sysconfig/%{name}
+%{_sbindir}/%{name}
+%{_mandir}/man8/%{name}.8*
+%{_unitdir}/%{name}.service
+%{_unitdir}/%{name}-cleanup.service
+%{_unitdir}/%{name}-cleanup.timer
+%dir %attr(0700,root,root) /var/spool/%{name}
+
+%changelog
+* Fri Aug 28 2026 Denys Pozniak <denys.pozniak@gmail.com> - 1.2.0-1
+- Repackage against upstream SVN r157 plus the jchavanton flush/logging fixes
+- Replace the SysV init script with systemd units
+- Add pcapsipdump-cleanup.timer honouring the RETENTION setting
+- Build from GitHub Actions
