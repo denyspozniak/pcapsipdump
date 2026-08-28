@@ -1,0 +1,27 @@
+# build artifacts
+*.o
+*.d
+pcapsipdump
+make-checks/cxx
+make-checks/libbsd
+make-checks/libpcap
+makefile-helpers/check_libpcap
+tests/performance/calltable_benchmark
+tests/unit/pcapsipdump_strlib_unittest
+
+# packaging
+*.deb
+*.rpm
+debian/files
+debian/pcapsipdump/
+debian/*.substvars
+debian/*.log
+debian/.debhelper/
+
+# captures
+*.pcap
+
+# editors
+.vscode/
+.idea/
+*.swp
