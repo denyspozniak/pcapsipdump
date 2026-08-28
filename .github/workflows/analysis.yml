@@ -1,0 +1,127 @@
+name: analysis
+
+# Static and dynamic analysis of the capture path. Everything here is blocking:
+# this parses hostile network input as root, so a new finding is a bug, not a
+# note. See docs/ARCHITECTURE.md for why the alignment check is the one
+# exception.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Catch findings from new compiler and cppcheck versions rather than only
+    # when somebody happens to push.
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: analysis-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  sanitizers:
+    name: ${{ matrix.cc }} + ASan/UBSan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        cc: [g++, clang++]
+    env:
+      # LeakSanitizer needs ptrace, which the runner's container sandbox does
+      # not always allow; the leaks here are one-shot allocations at start-up
+      # anyway. abort_on_error turns a report into a non-zero exit.
+      ASAN_OPTIONS: detect_leaks=0:abort_on_error=1
+      UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential clang libpcap-dev libbsd-dev python3
+
+      - name: Work around ASan vs. ASLR entropy on newer kernels
+        # AddressSanitizer cannot map its shadow when vm.mmap_rnd_bits is at
+        # the kernel default of 32, and dies in a DEADLYSIGNAL loop instead of
+        # reporting anything useful.
+        run: sudo sysctl -w vm.mmap_rnd_bits=28 || true
+
+      - name: Build instrumented
+        shell: bash
+        run: |
+          set -euxo pipefail
+          # -fno-sanitize=alignment: an IPv4 header sits at offset 14 of an
+          # Ethernet frame, so every header access in this codebase is a
+          # misaligned load. It is a real portability constraint, documented in
+          # docs/ARCHITECTURE.md, but leaving the check on would drown every
+          # other finding.
+          SAN="-fsanitize=address,undefined -fno-sanitize=alignment"
+          SAN="${SAN} -fno-omit-frame-pointer -g -O1"
+          echo "SAN=${SAN}" >> "${GITHUB_ENV}"
+          make CXX=${{ matrix.cc }} CXXFLAGS="${SAN}" LDFLAGS="${SAN}"
+
+      - name: Unit tests
+        run: make -C tests/unit CXX=${{ matrix.cc }} CXXFLAGS="${SAN}" LDFLAGS="${SAN}"
+
+      - name: Smoke test - parse a synthetic capture under the sanitizers
+        run: make -C tests/smoke
+
+      - name: Benchmark under the sanitizers
+        run: |
+          make -C tests/performance CXX=${{ matrix.cc }} \
+            CXXFLAGS="${SAN} --std=c++11" LDFLAGS="${SAN}"
+
+  cppcheck:
+    name: cppcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cppcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cppcheck libpcap-dev
+
+      - name: Analyse
+        run: |
+          cppcheck --quiet --error-exitcode=1 \
+            --enable=warning \
+            --inline-suppr \
+            --std=c++11 \
+            --suppress=missingIncludeSystem \
+            --template='{severity}: {file}:{line}: {id}: {message}' \
+            *.cpp tests/performance/*.cpp
+
+      - name: Report style and performance findings (advisory)
+        if: always()
+        run: |
+          cppcheck --quiet \
+            --enable=performance,portability \
+            --inline-suppr \
+            --std=c++11 \
+            --suppress=missingIncludeSystem \
+            --template='{severity}: {file}:{line}: {id}: {message}' \
+            *.cpp tests/performance/*.cpp || true
+
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends shellcheck
+
+      - name: Check the shell scripts this fork owns
+        run: |
+          shellcheck --severity=warning \
+            tests/smoke/run.sh \
+            docker/build.sh \
+            docker/run.sh
