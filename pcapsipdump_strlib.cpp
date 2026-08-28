@@ -8,11 +8,17 @@ const char * gettag(const char *ptr, unsigned long len, const char *tag, unsigne
 
     if(len > 1){
         tl = strlen(tag);
-        for(r = ptr; r != NULL;){
-            r = (const char*)memmem(r+1, len-(r-ptr)-2, tag, tl);
-            if(r && (r[-1] == '\r' || r[-1] == '\n')) {
+        // A tag only counts at the start of a line: either at the very
+        // beginning of the buffer, or right after CR/LF. Starting the search
+        // at ptr rather than ptr+1 is what makes the first case work.
+        for(r = ptr; r != NULL && (unsigned long)(r - ptr) < len;){
+            r = (const char*)memmem(r, len-(r-ptr), tag, tl);
+            if(r == NULL){
+                break;
+            }
+            if(r == ptr || r[-1] == '\r' || r[-1] == '\n') {
                 r += tl;
-                while (r[0] == ' ') {
+                while (r < (ptr+len) && r[0] == ' ') {
                     r++;
                 }
                 for(lp = r; lp < (ptr+len); lp++){
@@ -21,6 +27,9 @@ const char * gettag(const char *ptr, unsigned long len, const char *tag, unsigne
                         return r;
                     }
                 }
+                // unterminated line: not a usable value, keep looking
+            } else {
+                r++;
             }
         }
     }
@@ -42,7 +51,8 @@ uint8_t sdp_get_rtpmap_event(const char *sdp) {
               strncmp(te, s + 2, tel) == 0 ||
               strncmp(te, s + 3, tel) == 0 )) {
         l = atol(s);
-        if (l <= 256) {
+        // the return type is uint8_t, so 256 and above cannot be represented
+        if (l <= 255) {
             return l;
         }
     }

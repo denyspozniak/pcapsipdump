@@ -149,6 +149,47 @@ int parse_sdp(const char *sdp, size_t sdplen, calltable_element *ce)
     return 0;
 }
 
+static void usage(FILE *out)
+{
+    fprintf(out, "pcapsipdump version %s\n"
+		"Usage: pcapsipdump [-fpUhV] [-i interface | -r file] [-d output_directory] [-P pid_file]\n"
+                "                   [-v level] [-R filter] [-m filter] [-n filter] [-l filter]\n"
+                "                   [-B size] [-T limit] [-t trigger:action:param] [expression]\n"
+		" -h   Show this help and exit.\n"
+		" -V   Show the version and exit.\n"
+		" -f   Do not fork or detach from controlling terminal.\n"
+		" -P   When forking, save PID to this file (default /var/run/pcapsipdump.pid).\n"
+		" -p   Do not put the interface into promiscuous mode.\n"
+		" -U   Make .pcap files writing 'packet-buffered' - slower method,\n"
+		"      but you can use partitially written file anytime, it will be consistent.\n"
+		" -i   Specify network interface name (i.e. eth0, em1, ppp0, etc).\n"
+		" -r   Read from .pcap file instead of network interface.\n"
+		" -v   Set verbosity level (higher is more verbose).\n"
+		" -B   Set the operating system capture buffer size, a.k.a. ring buffer size.\n"
+		"      This can be expressed in bytes/KB(*1000)/KiB(*1024)/MB/MiB/GB/GiB. ex.: '-B 64MiB'\n"
+		"      Set this to few MiB or more to avoid packets dropped by kernel.\n"
+		" -R   RTP filter. Specifies what kind of RTP information to include in capture:\n"
+		"      'rtp+rtcp' (default), 'rtp', 'rtpevent', 't38', or 'none'.\n"
+		" -m   Method-filter. Default is '^(INVITE|OPTIONS|REGISTER)$'\n"
+		" -n   Number-filter. Only calls to/from specified number will be recorded\n"
+		"      Argument is a regular expression. See 'man 7 regex' for details.\n"
+                " -l   Record only each N-th call (i.e. '-l 3' = record only each third call)\n"
+                " -d   Set directory (or filename template), where captured files will be stored.\n"
+                "      ex.: -d /var/spool/pcapsipdump/%%Y%%m%%d/%%H/%%Y%%m%%d-%%H%%M%%S-%%f-%%t-%%i.pcap\n"
+                " -T   Unconditionally stop recording a call after it was active for this many seconds.\n"
+                "      Might be useful for broken peers that keep sending RTP long after call ended.\n"
+                " -t   <trigger>:<action>:<parameter>. Parameter is %%-expanded (see below)\n"
+                "      Triggers: open = when opening a new .pcap file; close = when closing\n"
+                "      Actions and their parameters:\n"
+                "      mv:<directory> - move .pcap files to <directory> (using /bin/mv)\n"
+                "      exec:\"/bin/blah args...\" - fork and execute /bin/blah with arguments\n"
+                "      sh:\"shell code\" - fork and execute /bin/sh -c \"shell code\"\n"
+                " *    Following %%-codes are expanded in -d and -t: %%f (from/caller), %%t (to/callee),\n"
+                "      %%i (call-id), and call date/time (see 'man 3 strftime' for details)\n"
+                " *    Trailing argument is pcap filter expression syntax, see 'man 7 pcap-filter'\n"
+                , PCAPSIPDUMP_VERSION);
+}
+
 int main(int argc, char *argv[])
 {
 	// char buffer[8192];
@@ -181,7 +222,6 @@ int main(int argc, char *argv[])
     regmatch_t pmatch[1];
     const char *pid_file="/var/run/pcapsipdump.pid";
 
-    printf("libpcap version: '%s'\n", pcap_lib_version());
     if ((int)getuid()){
         struct passwd *pw = getpwuid(getuid());
         opt_fntemplate = (char *)malloc(512);
@@ -198,7 +238,7 @@ int main(int argc, char *argv[])
     while(1) {
         signed char c;
 
-        c = getopt (argc, argv, "i:r:d:v:m:n:R:l:B:T:t:P:fpU");
+        c = getopt (argc, argv, "i:r:d:v:m:n:R:l:B:T:t:P:fpUhV");
         if (c == -1)
             break;
 
@@ -275,10 +315,22 @@ int main(int argc, char *argv[])
             case 'P':
                 pid_file = optarg;
                 break;
+            case 'h':
+                usage(stdout);
+                return 0;
+            case 'V':
+                printf("pcapsipdump %s\n", PCAPSIPDUMP_VERSION);
+                return 0;
+            default:
+                usage(stderr);
+                return 1;
         }
     }
 
-    printf("opt packet buffered: '%d'\n", opt_packetbuffered);
+    if (verbosity >= 1){
+        printf("libpcap version: '%s'\n", pcap_lib_version());
+        printf("opt packet buffered: '%d'\n", opt_packetbuffered);
+    }
     // everything that is left unparsed in argument string is pcap filter expression
     if (optind < argc) {
         filter_exp[0]='\0';
@@ -291,42 +343,8 @@ int main(int argc, char *argv[])
     }
 
     if ((fname==NULL)&&(ifname==NULL)){
-	printf( "pcapsipdump version %s\n"
-		"Usage: pcapsipdump [-fpU] [-i interface | -r file] [-d output_directory] [-P pid_file]\n"
-                "                   [-v level] [-R filter] [-m filter] [-n filter] [-l filter]\n"
-                "                   [-B size] [-T limit] [-t trigger:action:param] [expression]\n"
-		" -f   Do not fork or detach from controlling terminal.\n"
-		" -P   When forking, save PID to this file (default /var/run/pcapsipdump.pid).\n"
-		" -p   Do not put the interface into promiscuous mode.\n"
-		" -U   Make .pcap files writing 'packet-buffered' - slower method,\n"
-		"      but you can use partitially written file anytime, it will be consistent.\n"
-		" -i   Specify network interface name (i.e. eth0, em1, ppp0, etc).\n"
-		" -r   Read from .pcap file instead of network interface.\n"
-		" -v   Set verbosity level (higher is more verbose).\n"
-		" -B   Set the operating system capture buffer size, a.k.a. ring buffer size.\n"
-		"      This can be expressed in bytes/KB(*1000)/KiB(*1024)/MB/MiB/GB/GiB. ex.: '-B 64MiB'\n"
-		"      Set this to few MiB or more to avoid packets dropped by kernel.\n"
-		" -R   RTP filter. Specifies what kind of RTP information to include in capture:\n"
-		"      'rtp+rtcp' (default), 'rtp', 'rtpevent', 't38', or 'none'.\n"
-		" -m   Method-filter. Default is '^(INVITE|OPTIONS|REGISTER)$'\n"
-		" -n   Number-filter. Only calls to/from specified number will be recorded\n"
-		"      Argument is a regular expression. See 'man 7 regex' for details.\n"
-                " -l   Record only each N-th call (i.e. '-l 3' = record only each third call)\n"
-                " -d   Set directory (or filename template), where captured files will be stored.\n"
-                "      ex.: -d /var/spool/pcapsipdump/%%Y%%m%%d/%%H/%%Y%%m%%d-%%H%%M%%S-%%f-%%t-%%i.pcap\n"
-                " -T   Unconditionally stop recording a call after it was active for this many seconds.\n"
-                "      Might be useful for broken peers that keep sending RTP long after call ended.\n"
-                " -t   <trigger>:<action>:<parameter>. Parameter is %%-expanded (see below)\n"
-                "      Triggers: open = when opening a new .pcap file; close = when closing\n"
-                "      Actions and their parameters:\n"
-                "      mv:<directory> - move .pcap files to <directory> (using /bin/mv)\n"
-                "      exec:\"/bin/blah args...\" - fork and execute /bin/blah with arguments\n"
-                "      sh:\"shell code\" - fork and execute /bin/sh -c \"shell code\"\n"
-                " *    Following %%-codes are expanded in -d and -t: %%f (from/caller), %%t (to/callee),\n"
-                "      %%i (call-id), and call date/time (see 'man 3 strftime' for details)\n"
-                " *    Trailing argument is pcap filter expression syntax, see 'man 7 pcap-filter'\n"
-                , PCAPSIPDUMP_VERSION);
-	return 1;
+        usage(stderr);
+        return 1;
     }
 
     if ((res = opts_sanity_check_d(&opt_fntemplate)) != 0) return res;
