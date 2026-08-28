@@ -151,14 +151,23 @@ jobs:
         with:
           path: artifacts
 
-      - name: Collect and checksum the artifacts
+      - name: Collect, rename and checksum the artifacts
         shell: bash
         run: |
           set -euxo pipefail
           mkdir -p dist
+          # Debug symbols are not published: Debian emits .deb for them while
+          # Ubuntu emits .ddeb, so the release would be lopsided for no gain.
           find artifacts -type f \( -name '*.deb' -o -name '*.tar.gz' \) \
-            -exec mv {} dist/ \;
+            ! -name '*-dbgsym_*' -exec mv {} dist/ \;
           cd dist
+          # GitHub rewrites "~" to "." in release asset names. Do the rename
+          # ourselves first, otherwise SHA256SUMS lists names that no longer
+          # exist once the files are downloaded and "sha256sum -c" fails.
+          for f in *'~'*; do
+            [ -e "${f}" ] || continue
+            mv -- "${f}" "${f//\~/.}"
+          done
           sha256sum * > SHA256SUMS
           cat SHA256SUMS
 
@@ -178,11 +187,14 @@ jobs:
             echo
             echo "| File | Target |"
             echo "| --- | --- |"
-            echo "| \`*~debian12_*.deb\`   | Debian 12 (bookworm) |"
-            echo "| \`*~debian13_*.deb\`   | Debian 13 (trixie) |"
-            echo "| \`*~ubuntu2204_*.deb\` | Ubuntu 22.04 LTS |"
-            echo "| \`*~ubuntu2404_*.deb\` | Ubuntu 24.04 LTS |"
-            echo "| \`*.tar.gz\`           | source |"
+            echo "| \`pcapsipdump_${VERSION}.debian12_amd64.deb\`   | Debian 12 (bookworm) |"
+            echo "| \`pcapsipdump_${VERSION}.debian13_amd64.deb\`   | Debian 13 (trixie) |"
+            echo "| \`pcapsipdump_${VERSION}.ubuntu2204_amd64.deb\` | Ubuntu 22.04 LTS |"
+            echo "| \`pcapsipdump_${VERSION}.ubuntu2404_amd64.deb\` | Ubuntu 24.04 LTS |"
+            echo "| \`pcapsipdump-${VERSION}.tar.gz\`               | source |"
+            echo
+            echo "The package version inside each file is \`${VERSION}~<dist>\`;"
+            echo "GitHub rewrites the \`~\` to a \`.\` in the asset name."
             echo
             echo "Full changes: [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md)"
           } > "${notes}"

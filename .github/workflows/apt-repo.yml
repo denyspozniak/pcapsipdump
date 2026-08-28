@@ -1,0 +1,175 @@
+name: apt-repo
+
+# Publishes an APT repository to GitHub Pages, rebuilt from scratch out of the
+# .deb files attached to every published release. Nothing is kept between runs,
+# so the repository can never drift out of sync with the releases.
+
+on:
+  release:
+    types: [published]
+  # Self-test: rebuilding from the existing releases is idempotent, so run it
+  # whenever the publishing code itself changes rather than finding out at the
+  # next release.
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/apt-repo.yml
+      - .github/scripts/render_apt_index.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: build the repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install repository tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends dpkg-dev apt-utils gnupg
+
+      - name: Download the .deb files from every published release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p incoming
+          tags=$(gh release list --repo "${GITHUB_REPOSITORY}" --limit 100 \
+                   --json tagName,isDraft \
+                   --jq '.[] | select(.isDraft | not) | .tagName')
+          if [ -z "${tags}" ]; then
+            echo "::error::no releases to publish"
+            exit 1
+          fi
+          for tag in ${tags}; do
+            echo "::group::${tag}"
+            gh release download "${tag}" --repo "${GITHUB_REPOSITORY}" \
+              --pattern '*.deb' --dir incoming || echo "no .deb assets on ${tag}"
+            echo "::endgroup::"
+          done
+          ls -la incoming
+
+      - name: Lay the packages out into per-suite pools
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The build tag baked into each file name maps to the suite an admin
+          # actually types into sources.list.
+          declare -A SUITE=(
+            [debian12]=bookworm
+            [debian13]=trixie
+            [ubuntu2204]=jammy
+            [ubuntu2404]=noble
+          )
+          mkdir -p repo
+          for deb in incoming/*.deb; do
+            name=$(basename "${deb}")
+            matched=
+            for tag in "${!SUITE[@]}"; do
+              case "${name}" in
+                *".${tag}_"*|*"~${tag}_"*)
+                  suite=${SUITE[$tag]}
+                  dest="repo/pool/${suite}/main/p/pcapsipdump"
+                  mkdir -p "${dest}"
+                  cp "${deb}" "${dest}/"
+                  matched=yes
+                  ;;
+              esac
+            done
+            if [ -z "${matched}" ]; then
+              echo "skipping ${name}: no known distribution tag in the file name"
+            fi
+          done
+          find repo -type f -name '*.deb' | sort
+
+      - name: Generate Packages and Release indices
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd repo
+          for pool in pool/*/; do
+            suite=$(basename "${pool}")
+            bindir="dists/${suite}/main/binary-amd64"
+            mkdir -p "${bindir}"
+
+            # Paths inside Packages are relative to the repository root, so
+            # dpkg-scanpackages has to run from here.
+            dpkg-scanpackages --arch amd64 "pool/${suite}" /dev/null \
+              > "${bindir}/Packages"
+            gzip -9cn "${bindir}/Packages" > "${bindir}/Packages.gz"
+
+            apt-ftparchive \
+              -o APT::FTPArchive::Release::Origin=pcapsipdump \
+              -o APT::FTPArchive::Release::Label=pcapsipdump \
+              -o APT::FTPArchive::Release::Suite="${suite}" \
+              -o APT::FTPArchive::Release::Codename="${suite}" \
+              -o APT::FTPArchive::Release::Architectures=amd64 \
+              -o APT::FTPArchive::Release::Components=main \
+              -o APT::FTPArchive::Release::Description="pcapsipdump packages built by GitHub Actions" \
+              release "dists/${suite}" > "dists/${suite}/Release"
+
+            echo "=== ${suite}"
+            grep -E '^(Package|Version|Filename):' "${bindir}/Packages" || true
+          done
+
+      - name: Sign the Release files, if a key is configured
+        env:
+          APT_GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
+          APT_GPG_PASSPHRASE: ${{ secrets.APT_GPG_PASSPHRASE }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${APT_GPG_PRIVATE_KEY:-}" ]; then
+            echo "No APT_GPG_PRIVATE_KEY secret set - the repository stays unsigned."
+            echo "Clients will need [trusted=yes] in their sources entry."
+            exit 0
+          fi
+          echo "${APT_GPG_PRIVATE_KEY}" | gpg --batch --import
+          keyid=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec:/ {print $5; exit}')
+          for release in repo/dists/*/Release; do
+            gpg --batch --yes --pinentry-mode loopback \
+                --passphrase "${APT_GPG_PASSPHRASE}" \
+                --default-key "${keyid}" -abs -o "${release}.gpg" "${release}"
+            gpg --batch --yes --pinentry-mode loopback \
+                --passphrase "${APT_GPG_PASSPHRASE}" \
+                --default-key "${keyid}" --clearsign -o "${release%Release}InRelease" "${release}"
+          done
+          gpg --armor --export "${keyid}" > repo/pcapsipdump.asc
+          echo "signed with ${keyid}"
+
+      - name: Write the landing page
+        shell: bash
+        run: |
+          set -euo pipefail
+          signed=no
+          if [ -f repo/pcapsipdump.asc ]; then signed=yes; fi
+          python3 .github/scripts/render_apt_index.py \
+            --repo-dir repo \
+            --base-url "https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}" \
+            --signed "${signed}"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: repo
+
+  deploy:
+    name: deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
