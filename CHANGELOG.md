@@ -8,6 +8,22 @@ Upstream's own history up to SVN r157 lives in [`ChangeLog`](ChangeLog).
 
 ## [Unreleased]
 
+### Added
+
+- An APT repository published to GitHub Pages by `apt-repo.yml`, rebuilt from
+  the `.deb` assets of every release so it can never drift out of sync with
+  them. It is unsigned by default and documented as such; setting the
+  `APT_GPG_PRIVATE_KEY` and `APT_GPG_PASSPHRASE` secrets switches signing on
+  and publishes the public key alongside the indices.
+
+### Fixed
+
+- `SHA256SUMS` listed file names containing `~`, but GitHub rewrites `~` to `.`
+  in release asset names, so `sha256sum -c SHA256SUMS` failed on everything a
+  user actually downloaded. The rename now happens before checksumming.
+- `-dbgsym` packages are no longer attached to releases: Debian emits them as
+  `.deb` and Ubuntu as `.ddeb`, so the published set was lopsided.
+
 ## [1.2.0] - 2026-08-28
 
 First release of this fork. Based on

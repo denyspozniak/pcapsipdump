@@ -1,0 +1,33 @@
+# The C++ sources are upstream's and mix tabs with spaces on purpose - do not
+# reformat them. These rules cover the files this fork actually owns.
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+charset = utf-8
+trim_trailing_whitespace = true
+
+[*.{yml,yaml,json}]
+indent_style = space
+indent_size = 2
+
+[*.py]
+indent_style = space
+indent_size = 4
+
+[*.{sh,mk}]
+indent_style = space
+indent_size = 4
+
+[Makefile]
+indent_style = tab
+
+[debian/rules]
+indent_style = tab
+
+[*.{cpp,h}]
+trim_trailing_whitespace = false
+
+[*.md]
+trim_trailing_whitespace = false

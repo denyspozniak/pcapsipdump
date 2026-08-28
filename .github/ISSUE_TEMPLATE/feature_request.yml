@@ -1,0 +1,41 @@
+name: Feature request
+description: Suggest a capability or a packaging change
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is a maintenance fork of a tool that has been stable for years.
+        Packaging, CI and documentation changes are easy to land; changes to how
+        packets are parsed need a concrete case behind them.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that does not work today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like instead
+      description: A new option, a different default, a package for another distribution…
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you tried already
+      description: |
+        Existing options that come close — `-m`, `-n`, `-R`, `-t`, or a trailing
+        pcap-filter expression — and why they do not cover the case.
+
+  - type: checkboxes
+    id: willing
+    attributes:
+      label: Contribution
+      options:
+        - label: I am willing to open a pull request for this

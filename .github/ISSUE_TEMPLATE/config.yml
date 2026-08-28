@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/denyspozniak/pcapsipdump/security/advisories/new
+    about: Report privately - pcapsipdump parses hostile network input as root.
+  - name: Upstream project (SourceForge, unmaintained since 2020)
+    url: https://sourceforge.net/projects/pcapsipdump/
+    about: The original project this fork descends from.

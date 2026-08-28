@@ -34,6 +34,8 @@ $ pcapsipdump -r bulk.pcap -d /tmp/calls
 
 - [Why this fork exists](#why-this-fork-exists)
 - [Install](#install)
+  - [From the APT repository](#from-the-apt-repository)
+  - [From a release download](#from-a-release-download)
 - [Build from source](#build-from-source)
 - [Running as a service](#running-as-a-service)
 - [Usage](#usage)
@@ -42,6 +44,7 @@ $ pcapsipdump -r bulk.pcap -d /tmp/calls
 - [Docker](#docker)
 - [Tests](#tests)
 - [Releases](#releases)
+- [Documentation](#documentation)
 - [Credits](#credits)
 - [Maintenance and AI assistance](#maintenance-and-ai-assistance)
 - [License](#license)
@@ -79,19 +82,57 @@ SourceForge SVN r157 (2020-03-03, final upstream revision)
 
 ## Install
 
+### From the APT repository
+
+Every release is republished as an APT repository on GitHub Pages, so upgrades
+arrive through `apt upgrade` like any other package:
+
+```bash
+echo "deb [trusted=yes] https://denyspozniak.github.io/pcapsipdump $(lsb_release -cs) main" \
+  | sudo tee /etc/apt/sources.list.d/pcapsipdump.list
+sudo apt update
+sudo apt install pcapsipdump
+```
+
+> [!WARNING]
+> **The repository is not GPG-signed.** `[trusted=yes]` tells apt to skip
+> signature verification entirely, so you are trusting GitHub Pages and your
+> network path to hand you the right bytes — use it at your own risk. If that
+> is not acceptable, use the release downloads below and verify them against
+> `SHA256SUMS`.
+>
+> Signing is wired up already: set the `APT_GPG_PRIVATE_KEY` and
+> `APT_GPG_PASSPHRASE` repository secrets and the next run signs `Release`,
+> publishes `pcapsipdump.asc`, and the `[trusted=yes]` option can be dropped.
+
+Suites: `bookworm` (Debian 12), `trixie` (Debian 13), `jammy` (Ubuntu 22.04),
+`noble` (Ubuntu 24.04). Landing page:
+[denyspozniak.github.io/pcapsipdump](https://denyspozniak.github.io/pcapsipdump).
+
+To undo:
+
+```bash
+sudo rm /etc/apt/sources.list.d/pcapsipdump.list && sudo apt update
+```
+
+### From a release download
+
 Grab a package from the [latest release](https://github.com/denyspozniak/pcapsipdump/releases/latest):
 
 ```bash
 # pick the file matching your distribution
-sudo apt install ./pcapsipdump_1.2.0~ubuntu2404_amd64.deb
+sudo apt install ./pcapsipdump_1.2.0.ubuntu2404_amd64.deb
 ```
 
-| File suffix | Target |
+| File | Target |
 | --- | --- |
-| `~debian12` | Debian 12 (bookworm) |
-| `~debian13` | Debian 13 (trixie) |
-| `~ubuntu2204` | Ubuntu 22.04 LTS |
-| `~ubuntu2404` | Ubuntu 24.04 LTS |
+| `pcapsipdump_<ver>.debian12_amd64.deb` | Debian 12 (bookworm) |
+| `pcapsipdump_<ver>.debian13_amd64.deb` | Debian 13 (trixie) |
+| `pcapsipdump_<ver>.ubuntu2204_amd64.deb` | Ubuntu 22.04 LTS |
+| `pcapsipdump_<ver>.ubuntu2404_amd64.deb` | Ubuntu 24.04 LTS |
+
+The package version inside each file is `<ver>~<dist>`; GitHub rewrites the `~`
+to a `.` in the asset name.
 
 Every release also carries a source tarball and a `SHA256SUMS` file:
 
@@ -271,8 +312,27 @@ git push --follow-tags
 
 Pushing a `v*` tag runs [`release.yml`](.github/workflows/release.yml), which
 builds a `.deb` for each supported distribution, install-tests each one,
-generates `SHA256SUMS` and publishes a GitHub release. See
-[CHANGELOG.md](CHANGELOG.md).
+generates `SHA256SUMS` and publishes a GitHub release. Publishing that release
+then triggers [`apt-repo.yml`](.github/workflows/apt-repo.yml), which rebuilds
+the APT repository on GitHub Pages from the assets of *every* release — so the
+repository is regenerated from scratch each time and cannot drift.
+
+For the Pages deployment to work, the repository's
+*Settings → Pages → Build and deployment → Source* must be set to
+**GitHub Actions**.
+
+See [CHANGELOG.md](CHANGELOG.md).
+
+## Documentation
+
+| Document | What is in it |
+| --- | --- |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | the packet path from `pcap_next_ex()` to a per-call file, the call table, the fixed-size fields that bite, and where the performance goes |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | how to build, test and submit a change; why the core parsing code is touched conservatively |
+| [`SECURITY.md`](SECURITY.md) | the threat model — this parses hostile input as root — and how to report a vulnerability |
+| [`CHANGELOG.md`](CHANGELOG.md) | what changed in each release, and why |
+| `man 8 pcapsipdump` | the full option reference |
+| [`ChangeLog`](ChangeLog) | upstream's own history, up to r157 |
 
 ## Credits
 

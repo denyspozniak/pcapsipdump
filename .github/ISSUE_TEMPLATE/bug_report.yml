@@ -1,0 +1,71 @@
+name: Bug report
+description: Something parses wrong, crashes, or does not get captured
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do **not** attach a capture from production traffic. Reproduce
+        the problem with synthetic traffic instead — `tests/smoke/make_sip_pcap.py`
+        is a starting point you can edit.
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `pcapsipdump -V`, or the .deb file name.
+      placeholder: pcapsipdump 1.2.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How it was installed
+      options:
+        - APT repository (GitHub Pages)
+        - .deb from a GitHub release
+        - built from source
+        - .rpm built from redhat/pcapsipdump.spec
+        - other
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Distribution and kernel
+      placeholder: "Debian 12, 6.1.0-21-amd64"
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Command line
+      description: The full invocation, or the OTHER_OPTS line from your config.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what happened instead
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output at -v 3
+      description: Rerun with `-f -v 3` and paste the relevant lines.
+      render: shell
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: |
+        Ideally a script that generates a capture triggering the problem, plus
+        the `pcapsipdump -r` command you run against it.
