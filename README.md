@@ -3,7 +3,7 @@
 [![ci](https://github.com/denyspozniak/pcapsipdump/actions/workflows/ci.yml/badge.svg)](https://github.com/denyspozniak/pcapsipdump/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/denyspozniak/pcapsipdump?sort=semver)](https://github.com/denyspozniak/pcapsipdump/releases)
 [![license](https://img.shields.io/badge/license-GPL--2.0--or--later-blue)](LICENSE)
-![stand with ukraine](https://img.shields.io/badge/%F0%9F%87%BA%F0%9F%87%A6%20Stand%20with-Ukraine-FFD500?labelColor=005BBB)
+![stand with ukraine](.github/assets/stand-with-ukraine.svg)
 
 **One `.pcap` file per SIP call.** `pcapsipdump` is a libpcap sniffer that
 records SIP signalling together with the RTP/RTCP media that belongs to it, in
