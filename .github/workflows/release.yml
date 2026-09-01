@@ -23,7 +23,7 @@ jobs:
     outputs:
       version: ${{ steps.v.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - id: v
         name: Derive the version and check it against the source
@@ -70,7 +70,7 @@ jobs:
             build-essential debhelper devscripts fakeroot lintian \
             libpcap-dev ca-certificates git
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Stamp the changelog with a distribution-specific version
         shell: bash
@@ -108,7 +108,7 @@ jobs:
           test -x /usr/sbin/pcapsipdump
           apt-get remove -y pcapsipdump
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: deb-${{ matrix.dist }}
           path: out/*.deb
@@ -119,7 +119,7 @@ jobs:
     needs: version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Create the release tarball
         env:
@@ -131,7 +131,7 @@ jobs:
             --prefix="pcapsipdump-${VERSION}/" \
             -o "out/pcapsipdump-${VERSION}.tar.gz" HEAD
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: source-tarball
           path: out/*.tar.gz
@@ -145,9 +145,9 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
 

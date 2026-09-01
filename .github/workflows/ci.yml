@@ -44,7 +44,7 @@ jobs:
             build-essential clang libpcap-dev libbsd-dev python3 \
             ca-certificates git make
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build
         run: make CXX=${{ matrix.cc }}
@@ -62,7 +62,7 @@ jobs:
     name: staged install layout
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install build dependencies
         run: |
@@ -123,7 +123,7 @@ jobs:
             build-essential debhelper devscripts fakeroot lintian \
             libpcap-dev ca-certificates git
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build the package
         run: dpkg-buildpackage -us -uc -b
