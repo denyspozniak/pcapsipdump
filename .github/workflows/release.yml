@@ -168,7 +168,7 @@ jobs:
             [ -e "${f}" ] || continue
             mv -- "${f}" "${f//\~/.}"
           done
-          sha256sum * > SHA256SUMS
+          sha256sum -- * > SHA256SUMS
           cat SHA256SUMS
 
       - name: Publish the GitHub release

@@ -95,7 +95,7 @@ jobs:
             --std=c++11 \
             --suppress=missingIncludeSystem \
             --template='{severity}: {file}:{line}: {id}: {message}' \
-            *.cpp tests/performance/*.cpp
+            ./*.cpp ./tests/performance/*.cpp
 
       - name: Report style and performance findings (advisory)
         if: always()
@@ -106,7 +106,7 @@ jobs:
             --std=c++11 \
             --suppress=missingIncludeSystem \
             --template='{severity}: {file}:{line}: {id}: {message}' \
-            *.cpp tests/performance/*.cpp || true
+            ./*.cpp ./tests/performance/*.cpp || true
 
   shellcheck:
     name: shellcheck
@@ -125,3 +125,15 @@ jobs:
             tests/smoke/run.sh \
             docker/build.sh \
             docker/run.sh
+
+  actionlint:
+    name: actionlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The image bundles shellcheck, so the run: blocks are checked as well.
+      - name: Check the workflows
+        uses: docker://rhysd/actionlint:1.7.12
+        with:
+          args: -color
