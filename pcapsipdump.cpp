@@ -225,8 +225,8 @@ int main(int argc, char *argv[])
     if ((int)getuid()){
         struct passwd *pw = getpwuid(getuid());
         opt_fntemplate = (char *)malloc(512);
-        strncpy(opt_fntemplate, pw->pw_dir, 512);
-        strncat(opt_fntemplate, "/.var/spool/pcapsipdump/%Y%m%d/%H/%Y%m%d-%H%M%S-%f-%t-%i.pcap", 512-62-1);
+        snprintf(opt_fntemplate, 512, "%s%s", pw->pw_dir,
+                 "/.var/spool/pcapsipdump/%Y%m%d/%H/%Y%m%d-%H%M%S-%f-%t-%i.pcap");
     }else{
         opt_fntemplate = (char *)"/var/spool/pcapsipdump/%Y%m%d/%H/%Y%m%d-%H%M%S-%f-%t-%i.pcap";
     }
