@@ -34,6 +34,10 @@ jobs:
             cc: g++
           - image: ubuntu:24.04
             cc: clang++
+          - image: ubuntu:26.04
+            cc: g++
+          - image: ubuntu:26.04
+            cc: clang++
     steps:
       - name: Install build dependencies
         run: |
@@ -113,6 +117,8 @@ jobs:
             dist: ubuntu2204
           - image: ubuntu:24.04
             dist: ubuntu2404
+          - image: ubuntu:26.04
+            dist: ubuntu2604
     steps:
       - name: Install build dependencies
         run: |

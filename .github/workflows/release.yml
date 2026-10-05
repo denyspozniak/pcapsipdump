@@ -60,6 +60,8 @@ jobs:
             dist: ubuntu2204
           - image: ubuntu:24.04
             dist: ubuntu2404
+          - image: ubuntu:26.04
+            dist: ubuntu2604
     steps:
       - name: Install build dependencies
         run: |
@@ -191,6 +193,7 @@ jobs:
             echo "| \`pcapsipdump_${VERSION}.debian13_amd64.deb\`   | Debian 13 (trixie) |"
             echo "| \`pcapsipdump_${VERSION}.ubuntu2204_amd64.deb\` | Ubuntu 22.04 LTS |"
             echo "| \`pcapsipdump_${VERSION}.ubuntu2404_amd64.deb\` | Ubuntu 24.04 LTS |"
+            echo "| \`pcapsipdump_${VERSION}.ubuntu2604_amd64.deb\` | Ubuntu 26.04 LTS |"
             echo "| \`pcapsipdump-${VERSION}.tar.gz\`               | source |"
             echo
             echo "The package version inside each file is \`${VERSION}~<dist>\`;"

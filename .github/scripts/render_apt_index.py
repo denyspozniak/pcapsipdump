@@ -15,6 +15,7 @@ SUITE_LABEL = {
     "trixie": "Debian 13",
     "jammy": "Ubuntu 22.04 LTS",
     "noble": "Ubuntu 24.04 LTS",
+    "resolute": "Ubuntu 26.04 LTS",
 }
 
 

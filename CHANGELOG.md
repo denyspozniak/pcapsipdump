@@ -12,6 +12,8 @@ Upstream's own history up to SVN r157 lives in [`ChangeLog`](ChangeLog).
 
 - actionlint in `analysis.yml`, so a broken workflow fails CI instead of the
   next release.
+- Ubuntu 26.04 LTS (resolute): built and tested in CI with gcc and clang, and
+  released as a `.deb` and in the APT repository.
 
 ### Fixed
 

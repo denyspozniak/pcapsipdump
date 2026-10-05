@@ -67,7 +67,7 @@ This fork keeps the upstream code and rebuilds everything around it:
 | --- | --- | --- |
 | Service management | SysV init | systemd units (+ retention timer) |
 | Debian packaging | `cdbs`, debhelper 5 | `dh` sequencer, debhelper-compat 13, `hardening=+all` |
-| Builds | manual `make` | GitHub Actions on Debian 12/13, Ubuntu 22.04/24.04, gcc + clang |
+| Builds | manual `make` | GitHub Actions on Debian 12/13, Ubuntu 22.04/24.04/26.04, gcc + clang |
 | Packages | built by hand | `.deb` attached to every tagged release, with `SHA256SUMS` |
 | Tests | unit tests failing, benchmark not compiling | unit + end-to-end smoke + benchmark, all green in CI |
 
@@ -107,7 +107,8 @@ sudo apt install pcapsipdump
 > publishes `pcapsipdump.asc`, and the `[trusted=yes]` option can be dropped.
 
 Suites: `bookworm` (Debian 12), `trixie` (Debian 13), `jammy` (Ubuntu 22.04),
-`noble` (Ubuntu 24.04). Landing page:
+`noble` (Ubuntu 24.04), and `resolute` (Ubuntu 26.04) from the first release
+after 1.2.0. Landing page:
 [denyspozniak.github.io/pcapsipdump](https://denyspozniak.github.io/pcapsipdump).
 
 To undo:
@@ -131,6 +132,7 @@ sudo apt install ./pcapsipdump_1.2.0.ubuntu2404_amd64.deb
 | `pcapsipdump_<ver>.debian13_amd64.deb` | Debian 13 (trixie) |
 | `pcapsipdump_<ver>.ubuntu2204_amd64.deb` | Ubuntu 22.04 LTS |
 | `pcapsipdump_<ver>.ubuntu2404_amd64.deb` | Ubuntu 24.04 LTS |
+| `pcapsipdump_<ver>.ubuntu2604_amd64.deb` | Ubuntu 26.04 LTS (after 1.2.0) |
 
 The package version inside each file is `<ver>~<dist>`; GitHub rewrites the `~`
 to a `.` in the asset name.

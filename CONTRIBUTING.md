@@ -18,8 +18,8 @@ make tests
 
 `make tests` runs the unit tests, the end-to-end smoke test and the benchmark.
 All three must pass before a change is worth reviewing. CI runs the same thing
-on Debian 12/13 and Ubuntu 22.04/24.04 with both gcc and clang, so a patch that
-only builds on your distribution will be caught.
+on Debian 12/13 and Ubuntu 22.04/24.04/26.04 with both gcc and clang, so a
+patch that only builds on your distribution will be caught.
 
 To reproduce a CI environment exactly:
 

@@ -78,6 +78,7 @@ jobs:
             [debian13]=trixie
             [ubuntu2204]=jammy
             [ubuntu2404]=noble
+            [ubuntu2604]=resolute
           )
           mkdir -p repo
           for deb in incoming/*.deb; do
