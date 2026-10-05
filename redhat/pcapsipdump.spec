@@ -1,5 +1,5 @@
 Name:           pcapsipdump
-Version:        1.2.0
+Version:        1.2.1
 Release:        1%{?dist}
 Summary:        Dump SIP sessions to one pcap file per call
 
@@ -57,6 +57,10 @@ The same binary also splits an existing bulk capture offline:
 %dir %attr(0700,root,root) /var/spool/%{name}
 
 %changelog
+* Mon Oct 05 2026 Denys Pozniak <denys.pozniak@gmail.com> - 1.2.1-1
+- Fix a default template overflow for home directories of 451+ characters
+- Fix a start-up crash under a UID with no passwd entry
+
 * Fri Aug 28 2026 Denys Pozniak <denys.pozniak@gmail.com> - 1.2.0-1
 - Repackage against upstream SVN r157 plus the jchavanton flush/logging fixes
 - Replace the SysV init script with systemd units

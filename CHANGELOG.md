@@ -8,6 +8,8 @@ Upstream's own history up to SVN r157 lives in [`ChangeLog`](ChangeLog).
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-10-05
+
 ### Added
 
 - actionlint in `analysis.yml`, so a broken workflow fails CI instead of the
@@ -120,5 +122,6 @@ ones, and lack the cppcheck fixes listed below.
   `README.md`.
 - A `.svn/` working-copy directory that had been committed to git by accident.
 
-[Unreleased]: https://github.com/denyspozniak/pcapsipdump/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/denyspozniak/pcapsipdump/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/denyspozniak/pcapsipdump/releases/tag/v1.2.1
 [1.2.0]: https://github.com/denyspozniak/pcapsipdump/releases/tag/v1.2.0

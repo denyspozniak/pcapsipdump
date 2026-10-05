@@ -1,3 +1,12 @@
+pcapsipdump (1.2.1) unstable; urgency=medium
+
+  * Fix an overflow of the default file name template for a non-root user
+    whose home directory is 451 characters or longer.
+  * Fix a start-up crash under a UID with no passwd entry.
+  * Build for Ubuntu 26.04 LTS.
+
+ -- Denys Pozniak <denys.pozniak@gmail.com>  Mon, 05 Oct 2026 13:37:10 +0200
+
 pcapsipdump (1.2.0) unstable; urgency=medium
 
   * Repackage against upstream SVN r157 (the final SourceForge revision) with

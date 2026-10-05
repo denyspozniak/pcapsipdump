@@ -107,8 +107,7 @@ sudo apt install pcapsipdump
 > publishes `pcapsipdump.asc`, and the `[trusted=yes]` option can be dropped.
 
 Suites: `bookworm` (Debian 12), `trixie` (Debian 13), `jammy` (Ubuntu 22.04),
-`noble` (Ubuntu 24.04), and `resolute` (Ubuntu 26.04) from the first release
-after 1.2.0. Landing page:
+`noble` (Ubuntu 24.04), `resolute` (Ubuntu 26.04). Landing page:
 [denyspozniak.github.io/pcapsipdump](https://denyspozniak.github.io/pcapsipdump).
 
 To undo:
@@ -123,7 +122,7 @@ Grab a package from the [latest release](https://github.com/denyspozniak/pcapsip
 
 ```bash
 # pick the file matching your distribution
-sudo apt install ./pcapsipdump_1.2.0.ubuntu2404_amd64.deb
+sudo apt install ./pcapsipdump_1.2.1.ubuntu2404_amd64.deb
 ```
 
 | File | Target |
@@ -132,7 +131,7 @@ sudo apt install ./pcapsipdump_1.2.0.ubuntu2404_amd64.deb
 | `pcapsipdump_<ver>.debian13_amd64.deb` | Debian 13 (trixie) |
 | `pcapsipdump_<ver>.ubuntu2204_amd64.deb` | Ubuntu 22.04 LTS |
 | `pcapsipdump_<ver>.ubuntu2404_amd64.deb` | Ubuntu 24.04 LTS |
-| `pcapsipdump_<ver>.ubuntu2604_amd64.deb` | Ubuntu 26.04 LTS (after 1.2.0) |
+| `pcapsipdump_<ver>.ubuntu2604_amd64.deb` | Ubuntu 26.04 LTS (from 1.2.1) |
 
 The package version inside each file is `<ver>~<dist>`; GitHub rewrites the `~`
 to a `.` in the asset name.

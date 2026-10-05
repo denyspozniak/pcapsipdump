@@ -14,7 +14,7 @@ body:
     attributes:
       label: Version
       description: Output of `pcapsipdump -V`, or the .deb file name.
-      placeholder: pcapsipdump 1.2.0
+      placeholder: pcapsipdump 1.2.1
     validations:
       required: true
 
