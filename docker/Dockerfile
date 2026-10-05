@@ -1,6 +1,6 @@
 # Build from the repository root:
 #   docker build -f docker/Dockerfile -t pcapsipdump .
-FROM debian:12-slim AS build
+FROM debian:13-slim AS build
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
@@ -13,7 +13,7 @@ COPY . .
 RUN make clean && make
 
 
-FROM debian:12-slim
+FROM debian:13-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
