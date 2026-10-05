@@ -223,9 +223,11 @@ int main(int argc, char *argv[])
     const char *pid_file="/var/run/pcapsipdump.pid";
 
     if ((int)getuid()){
+        // A UID with no passwd entry (docker run --user 1234) has no pw_dir.
         struct passwd *pw = getpwuid(getuid());
+        const char *home = pw ? pw->pw_dir : (getenv("HOME") ? : ".");
         opt_fntemplate = (char *)malloc(512);
-        snprintf(opt_fntemplate, 512, "%s%s", pw->pw_dir,
+        snprintf(opt_fntemplate, 512, "%s%s", home,
                  "/.var/spool/pcapsipdump/%Y%m%d/%H/%Y%m%d-%H%M%S-%f-%t-%i.pcap");
     }else{
         opt_fntemplate = (char *)"/var/spool/pcapsipdump/%Y%m%d/%H/%Y%m%d-%H%M%S-%f-%t-%i.pcap";

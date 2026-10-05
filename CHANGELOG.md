@@ -25,6 +25,10 @@ Upstream's own history up to SVN r157 lives in [`ChangeLog`](ChangeLog).
   was bounded by the length of the appended text rather than by the space left
   in the buffer. A hardened build aborted with "buffer overflow detected". The
   template is now built with `snprintf()`.
+- Run under a UID with no passwd entry, as with `docker run --user 1234`,
+  pcapsipdump crashed at start-up dereferencing the NULL result of
+  `getpwuid()`. The default template now falls back to `$HOME`, then to the
+  current directory.
 
 ## [1.2.0] - 2026-10-05
 
