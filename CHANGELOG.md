@@ -10,31 +10,26 @@ Upstream's own history up to SVN r157 lives in [`ChangeLog`](ChangeLog).
 
 ### Added
 
-- An APT repository published to GitHub Pages by `apt-repo.yml`, rebuilt from
-  the `.deb` assets of every release so it can never drift out of sync with
-  them. It is unsigned by default and documented as such; setting the
-  `APT_GPG_PRIVATE_KEY` and `APT_GPG_PASSPHRASE` secrets switches signing on
-  and publishes the public key alongside the indices.
 - actionlint in `analysis.yml`, so a broken workflow fails CI instead of the
   next release.
 
 ### Fixed
 
-- `SHA256SUMS` listed file names containing `~`, but GitHub rewrites `~` to `.`
-  in release asset names, so `sha256sum -c SHA256SUMS` failed on everything a
-  user actually downloaded. The rename now happens before checksumming.
-- `-dbgsym` packages are no longer attached to releases: Debian emits them as
-  `.deb` and Ubuntu as `.ddeb`, so the published set was lopsided.
 - `apt-repo.yml` never ran after a release: `release.yml` publishes with
   `GITHUB_TOKEN`, whose events do not start other workflows. It now follows the
   release workflow through `workflow_run`.
 
-## [1.2.0] - 2026-08-28
+## [1.2.0] - 2026-10-05
 
 First release of this fork. Based on
 [jchavanton/pcapsipdump](https://github.com/jchavanton/pcapsipdump) v1.1.1,
 which is a clean import of upstream SVN r157 (2020-03-03, the final revision on
 SourceForge).
+
+Re-released: the 2026-08-28 build of this tag shipped a `SHA256SUMS` that
+`sha256sum -c` could not verify, so the release was deleted and `v1.2.0` moved
+to a later commit. Files downloaded before 2026-10-05 differ from the current
+ones, and lack the cppcheck fixes listed below.
 
 ### Added
 
@@ -55,6 +50,15 @@ SourceForge).
   `SHA256SUMS` for every `v*` tag, and refuses to build if the tag disagrees
   with `PCAPSIPDUMP_VERSION`.
 - `CHANGELOG.md`, a rewritten `README.md`, and a `.gitignore`.
+- An APT repository published to GitHub Pages by `apt-repo.yml`, rebuilt from
+  the `.deb` assets of every release so it can never drift out of sync with
+  them. It is unsigned by default and documented as such; setting the
+  `APT_GPG_PRIVATE_KEY` and `APT_GPG_PASSPHRASE` secrets switches signing on
+  and publishes the public key alongside the indices.
+- GitHub Actions: `analysis.yml` runs ASan/UBSan builds with gcc and clang,
+  cppcheck and shellcheck. All of it blocks, except an advisory cppcheck
+  style and performance report.
+- `docs/ARCHITECTURE.md`, `CONTRIBUTING.md` and `SECURITY.md`.
 
 ### Fixed
 
@@ -73,6 +77,15 @@ SourceForge).
   arguments in the wrong order. It builds, links and runs again.
 - `make install` created no directories, so a `DESTDIR` install failed unless
   the target tree already existed.
+- Defects reported by cppcheck: `memcpy()` from a NULL Call-ID ran before the
+  NULL check, `calltable::global_last_packet_time` was never initialised,
+  `packets` was printed with `%ld` instead of `%lu`, and `parse_size_string()`
+  used an unbounded `%s`.
+- `SHA256SUMS` listed file names containing `~`, but GitHub rewrites `~` to `.`
+  in release asset names, so `sha256sum -c SHA256SUMS` failed on everything a
+  user actually downloaded. The rename now happens before checksumming.
+- `-dbgsym` packages are no longer attached to releases: Debian emits them as
+  `.deb` and Ubuntu as `.ddeb`, so the published set was lopsided.
 
 ### Changed
 
