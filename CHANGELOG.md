@@ -8,6 +8,12 @@ Upstream's own history up to SVN r157 lives in [`ChangeLog`](ChangeLog).
 
 ## [Unreleased]
 
+### Changed
+
+- Release notes are now this version's section of `CHANGELOG.md`, followed by
+  the file table. A tag whose version has no section fails before anything is
+  built.
+
 ## [1.2.1] - 2026-10-05
 
 ### Added

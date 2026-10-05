@@ -125,6 +125,7 @@ jobs:
         run: |
           shellcheck --severity=warning \
             tests/smoke/run.sh \
+            .github/scripts/changelog_section.sh \
             docker/build.sh \
             docker/run.sh
 

@@ -41,6 +41,12 @@ jobs:
                  "Use 'bumpversion patch|minor|major' instead of tagging by hand."
             exit 1
           fi
+          # The release notes are this version's CHANGELOG.md section; fail
+          # here rather than after every package has been built.
+          if ! .github/scripts/changelog_section.sh "${version}" > /dev/null; then
+            echo "::error::CHANGELOG.md has no '## [${version}]' section."
+            exit 1
+          fi
           echo "version=${version}" >> "$GITHUB_OUTPUT"
 
   deb:
@@ -182,7 +188,9 @@ jobs:
           set -euo pipefail
           notes=$(mktemp)
           {
-            echo "## pcapsipdump ${VERSION}"
+            .github/scripts/changelog_section.sh "${VERSION}"
+            echo
+            echo "### Files"
             echo
             echo "Packages built by GitHub Actions from this tag."
             echo "Verify with \`sha256sum -c SHA256SUMS\`."
@@ -199,7 +207,7 @@ jobs:
             echo "The package version inside each file is \`${VERSION}~<dist>\`;"
             echo "GitHub rewrites the \`~\` to a \`.\` in the asset name."
             echo
-            echo "Full changes: [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md)"
+            echo "Earlier releases: [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md)"
           } > "${notes}"
           gh release create "${GITHUB_REF_NAME}" \
             --title "pcapsipdump ${VERSION}" \
