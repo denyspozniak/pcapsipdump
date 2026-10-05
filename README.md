@@ -300,6 +300,17 @@ make tests
 `tests/segfaults` is left out of the default run: it needs a
 `packet-size.prepare` generator that upstream never committed.
 
+On top of the test suites, [`analysis.yml`](.github/workflows/analysis.yml)
+runs ASan/UBSan builds with gcc and clang, cppcheck, shellcheck over the
+fork's own scripts, and [actionlint](https://github.com/rhysd/actionlint) over
+the workflows, including shellcheck on every `run:` block. All of it is
+blocking except cppcheck's advisory style and performance report. To lint
+the workflows locally with the same version CI uses:
+
+```bash
+docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
+```
+
 ## Releases
 
 Versioning is semantic and driven by [`bump2version`](https://github.com/c4urself/bump2version);
@@ -313,7 +324,7 @@ git push --follow-tags
 
 Pushing a `v*` tag runs [`release.yml`](.github/workflows/release.yml), which
 builds a `.deb` for each supported distribution, install-tests each one,
-generates `SHA256SUMS` and publishes a GitHub release. Publishing that release
+generates `SHA256SUMS` and publishes a GitHub release. A successful release run
 then triggers [`apt-repo.yml`](.github/workflows/apt-repo.yml), which rebuilds
 the APT repository on GitHub Pages from the assets of *every* release — so the
 repository is regenerated from scratch each time and cannot drift.

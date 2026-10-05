@@ -15,6 +15,8 @@ Upstream's own history up to SVN r157 lives in [`ChangeLog`](ChangeLog).
   them. It is unsigned by default and documented as such; setting the
   `APT_GPG_PRIVATE_KEY` and `APT_GPG_PASSPHRASE` secrets switches signing on
   and publishes the public key alongside the indices.
+- actionlint in `analysis.yml`, so a broken workflow fails CI instead of the
+  next release.
 
 ### Fixed
 
@@ -23,6 +25,9 @@ Upstream's own history up to SVN r157 lives in [`ChangeLog`](ChangeLog).
   user actually downloaded. The rename now happens before checksumming.
 - `-dbgsym` packages are no longer attached to releases: Debian emits them as
   `.deb` and Ubuntu as `.ddeb`, so the published set was lopsided.
+- `apt-repo.yml` never ran after a release: `release.yml` publishes with
+  `GITHUB_TOKEN`, whose events do not start other workflows. It now follows the
+  release workflow through `workflow_run`.
 
 ## [1.2.0] - 2026-08-28
 
