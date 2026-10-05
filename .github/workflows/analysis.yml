@@ -16,7 +16,9 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: analysis-${{ github.ref }}
+  # Keyed on the event as well, so the weekly scheduled run and a push to main
+  # do not cancel each other; consecutive pushes still do.
+  group: analysis-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
