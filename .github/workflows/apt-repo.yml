@@ -7,6 +7,12 @@ name: apt-repo
 on:
   release:
     types: [published]
+  # release.yml publishes with GITHUB_TOKEN, and events raised by that token do
+  # not start other workflows, so the release event above never fires for our
+  # own releases. Follow the workflow instead.
+  workflow_run:
+    workflows: [release]
+    types: [completed]
   # Self-test: rebuilding from the existing releases is idempotent, so run it
   # whenever the publishing code itself changes rather than finding out at the
   # next release.
@@ -29,6 +35,7 @@ concurrency:
 jobs:
   build:
     name: build the repository
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
